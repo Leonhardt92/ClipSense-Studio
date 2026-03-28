@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSV Embedding 生成器</title>
+  <link rel="stylesheet" href="./assets/css/embed-builder.css" />
+</head>
+<body>
+  <main class="container">
+    <nav class="top-nav">
+      <a class="top-nav-link" href="./index.html">句影检索台</a>
+      <a class="top-nav-link active" href="./embed-builder.html">向量生成</a>
+      <a class="top-nav-link" href="./media-tools.html">媒体工具</a>
+    </nav>
+
+    <h1>CSV Embedding 生成器</h1>
+    <p class="desc">填入 CSV 的前几列，点击生成 embedding。你可以直接复制“完整 CSV 行”手动贴入 <code>data/search_records.csv</code>。</p>
+
+    <section class="parse-block">
+      <h2>从现有 CSV 单行解析并回填</h2>
+      <textarea id="parse-row-input" rows="4" placeholder="粘贴 1 行 CSV：original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,embedding"></textarea>
+      <div class="actions parse-actions">
+        <button id="parse-row-btn" type="button" class="ghost">解析并填充表单</button>
+      </div>
+    </section>
+
+    <section class="form-grid">
+      <label>
+        <span>original（原句）</span>
+        <textarea id="original" rows="2" placeholder="例如：今天先完成60分，也比0分强。"></textarea>
+      </label>
+
+      <label>
+        <span>meaning（这句话表达的意思）</span>
+        <textarea id="meaning" rows="2" placeholder="例如：强调先完成再完美，降低行动门槛。"></textarea>
+      </label>
+
+      <label>
+        <span>synonyms（适合搜索的近义说法，用 | 分隔）</span>
+        <input id="synonyms" type="text" placeholder="先交付再优化|完成优于完美|先做出来" />
+      </label>
+
+      <label>
+        <span>scene_tags（场景标签，用 | 分隔）</span>
+        <input id="scene_tags" type="text" placeholder="拖延|效率|学习" />
+      </label>
+
+      <label>
+        <span>emotion_tags（情绪标签，用 | 分隔）</span>
+        <input id="emotion_tags" type="text" placeholder="理性|轻松" />
+      </label>
+
+      <label>
+        <span>youtube（视频链接）</span>
+        <input id="youtube" type="text" placeholder="https://www.youtube.com/watch?v=jNQXAC9IVRw" />
+      </label>
+
+      <label>
+        <span>video_download（视频下载链接）</span>
+        <input id="video_download" type="text" placeholder="https://example.com/video.mp4" />
+      </label>
+    </section>
+
+    <section class="actions">
+      <button id="generate-btn">生成 embedding</button>
+      <button id="copy-embedding-btn" class="ghost">复制 embedding</button>
+      <button id="copy-row-btn" class="ghost">复制完整 CSV 行</button>
+    </section>
+
+    <div class="meta">
+      <div id="status">尚未生成</div>
+      <div id="model-info">模型：Xenova/bge-small-zh-v1.5</div>
+    </div>
+
+    <section class="output-block">
+      <h2>完整 CSV 行（可直接粘贴）</h2>
+      <textarea id="csv-row-output" rows="5" readonly></textarea>
+    </section>
+
+    <section class="output-block">
+      <h2>embedding（JSON 数组）</h2>
+      <textarea id="embedding-output" rows="10" readonly></textarea>
+    </section>
+
+    <section class="output-block">
+      <h2>用于向量化的拼接文本（调试）</h2>
+      <textarea id="search-text-output" rows="8" readonly></textarea>
+    </section>
+  </main>
+
+  <script type="module" src="./assets/js/embed-builder.js"></script>
+</body>
+</html>

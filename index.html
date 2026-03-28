@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>句影检索台 (ClipSense Studio)</title>
+  <link rel="stylesheet" href="./assets/css/index.css" />
+</head>
+<body>
+  <main class="container">
+    <nav class="top-nav">
+      <a class="top-nav-link active" href="./index.html">句影检索台</a>
+      <a class="top-nav-link" href="./embed-builder.html">向量生成</a>
+      <a class="top-nav-link" href="./media-tools.html">媒体工具</a>
+    </nav>
+
+    <section class="main-content">
+      <h1 class="title">句影检索台</h1>
+      <p class="desc">输入一句话，返回表达相近的句子记录，并展示适配场景、情绪和可直接播放的 YouTube 视频片段。</p>
+
+      <section class="search-bar">
+        <input id="query" type="search" placeholder="例如：我现在压力很大但不想放弃" />
+        <button id="searchBtn">搜索</button>
+      </section>
+
+      <section class="search-mode">
+        <button id="mode-keyword" class="mode-btn active" type="button">关键词搜索</button>
+        <button id="mode-semantic" class="mode-btn" type="button">语义搜索</button>
+      </section>
+
+      <div class="meta-row">
+        <div id="status">正在加载 CSV 数据...</div>
+        <div id="count">当前结果 0 条</div>
+      </div>
+
+      <section class="examples" id="examples"></section>
+
+      <section class="results-wrap">
+        <section class="results" id="results"></section>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./assets/js/index.js"></script>
+</body>
+</html>

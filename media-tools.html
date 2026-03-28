@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>媒体转换工具</title>
+  <link rel="stylesheet" href="./assets/css/media-tools.css" />
+</head>
+<body>
+  <main class="wrap">
+    <nav class="top-nav">
+      <a class="top-nav-link" href="./index.html">句影检索台</a>
+      <a class="top-nav-link" href="./embed-builder.html">向量生成</a>
+      <a class="top-nav-link active" href="./media-tools.html">媒体工具</a>
+    </nav>
+
+    <header class="hero">
+      <h1>媒体转换工具</h1>
+      <p>支持“多张图片合成视频”和“视频拆分成多张图片”，均在本地浏览器处理。</p>
+    </header>
+
+    <section class="panel">
+      <h2>多图 -> 视频</h2>
+      <div class="grid">
+        <label>
+          <span>上传图片（可多选）</span>
+          <input id="images-input" type="file" accept="image/*" multiple />
+        </label>
+        <label>
+          <span>每张图时长（秒）</span>
+          <input id="img-duration" type="number" min="0.2" step="0.1" value="3" />
+        </label>
+        <label>
+          <span>FPS</span>
+          <input id="fps" type="number" min="8" step="1" value="24" />
+        </label>
+        <label>
+          <span>输出宽度</span>
+          <input id="video-width" type="number" min="320" step="2" value="1920" />
+        </label>
+        <label>
+          <span>输出高度</span>
+          <input id="video-height" type="number" min="180" step="2" value="1080" />
+        </label>
+      </div>
+      <div class="actions">
+        <button id="make-video-btn">生成视频</button>
+        <a id="download-video-link" class="link-btn hidden" download="images-to-video.webm">下载视频</a>
+      </div>
+      <div id="image-status" class="status">尚未开始</div>
+      <canvas id="preview-canvas" class="preview" width="1920" height="1080"></canvas>
+      <video id="generated-video" class="preview hidden" controls loop playsinline></video>
+    </section>
+
+    <section class="panel">
+      <h2>音频 -> 视频（随机动态画面）</h2>
+      <div class="grid">
+        <label>
+          <span>上传音频（mp3/wav/m4a）</span>
+          <input id="audio-input" type="file" accept="audio/*" />
+        </label>
+        <label>
+          <span>FPS</span>
+          <input id="audio-fps" type="number" min="8" step="1" value="30" />
+        </label>
+        <label>
+          <span>输出宽度</span>
+          <input id="audio-width" type="number" min="320" step="2" value="1920" />
+        </label>
+        <label>
+          <span>输出高度</span>
+          <input id="audio-height" type="number" min="180" step="2" value="1080" />
+        </label>
+      </div>
+      <div class="actions">
+        <button id="make-audio-video-btn">生成音频视频</button>
+        <a id="download-audio-video-link" class="link-btn hidden" download="audio-visualizer.webm">下载视频</a>
+      </div>
+      <div id="audio-status" class="status">尚未开始</div>
+      <canvas id="audio-canvas" class="preview" width="1920" height="1080"></canvas>
+      <video id="audio-generated-video" class="preview hidden" controls loop playsinline></video>
+    </section>
+
+    <section class="panel">
+      <h2>视频 -> 多图</h2>
+      <div class="grid">
+        <label>
+          <span>上传视频</span>
+          <input id="video-input" type="file" accept="video/*" />
+        </label>
+        <label>
+          <span>抽帧间隔（秒）</span>
+          <input id="extract-interval" type="number" min="0.1" step="0.1" value="3" />
+        </label>
+        <label>
+          <span>图片格式</span>
+          <select id="image-format">
+            <option value="image/png">PNG</option>
+            <option value="image/jpeg">JPEG</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="extract-btn">开始拆图</button>
+        <button id="download-all-btn" class="ghost">批量下载全部</button>
+      </div>
+      <div id="video-status" class="status">尚未开始</div>
+      <div id="frames" class="frames"></div>
+    </section>
+
+    <video id="hidden-video" class="hidden" playsinline></video>
+    <audio id="hidden-audio" class="hidden"></audio>
+
+    <div id="lightbox" class="lightbox hidden">
+      <button id="lightbox-close" class="lightbox-close" type="button">关闭</button>
+      <img id="lightbox-image" alt="大图预览" />
+    </div>
+  </main>
+
+  <script type="module" src="./assets/js/media-tools.js"></script>
+</body>
+</html>
