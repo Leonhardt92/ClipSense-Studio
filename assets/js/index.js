@@ -1,6 +1,6 @@
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
 
-const DATA_CSV_PATH = '../../data/search_records.csv';
+const DATA_CSV_PATH = './data/search_records.csv';
 const MODEL_ID = 'Xenova/bge-small-zh-v1.5';
 const QUERY_INSTRUCTION = '为这个句子生成表示以用于检索相关片段：';
 
