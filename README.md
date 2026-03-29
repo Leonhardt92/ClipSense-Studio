@@ -23,7 +23,7 @@
 CSV 表头顺序：
 
 ```csv
-original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,embedding
+original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,material_downloads,embedding
 ```
 
 字段说明：
@@ -34,7 +34,8 @@ original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,embeddi
 - `scene_tags`：场景标签，使用 `|` 分隔
 - `emotion_tags`：情绪标签，使用 `|` 分隔
 - `youtube`：YouTube 链接（支持 watch / shorts / youtu.be）
-- `video_download`：可下载链接（为空则 index 不显示“下载视频”）
+- `video_download`：视频下载链接，支持多个链接，页面显示为“下载视频”
+- `material_downloads`：素材下载链接，适合放纯 BGM、人声、贴图等可复用素材，支持多个链接，页面显示为“下载素材”
 - `embedding`：向量 JSON 数组
 
 ## 本地运行
@@ -70,3 +71,5 @@ http://localhost:8080/
 
 - 首次语义搜索或生成 embedding 时，会在浏览器下载模型，速度取决于网络环境。
 - 本项目当前不依赖 Node.js，可直接以静态文件方式运行。
+- 已启用基于 `version.json` 的自动缓存版本控制：`index.html` 会先读取 `version.json` 再加载 `index.js?v=<version>`。
+- `.github/workflows/update-version.yml` 会在每次 push 到 `main` 后自动把当前 commit SHA 写入 `version.json`。

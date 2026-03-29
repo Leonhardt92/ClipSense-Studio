@@ -1,6 +1,22 @@
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
 
-const DATA_CSV_PATH = './data/search_records.csv';
+function getBasePath() {
+  const path = window.location.pathname || '/';
+  if (path.endsWith('/')) return path;
+
+  const last = path.split('/').pop() || '';
+  if (last.includes('.')) {
+    return path.slice(0, path.lastIndexOf('/') + 1) || '/';
+  }
+  return `${path}/`;
+}
+
+const DATA_CSV_CANDIDATES = [
+  `${window.location.origin}${getBasePath()}data/search_records.csv`,
+  `${window.location.origin}/data/search_records.csv`,
+  './data/search_records.csv',
+  'data/search_records.csv',
+];
 const MODEL_ID = 'Xenova/bge-small-zh-v1.5';
 const QUERY_INSTRUCTION = '为这个句子生成表示以用于检索相关片段：';
 
@@ -99,6 +115,18 @@ function normalizeDownloadUrl(value) {
   }
 }
 
+function parseDownloadUrls(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+
+  const matches = raw.match(/https?:\/\/[^\s|，,]+/g) || [];
+  const normalized = matches
+    .map((item) => normalizeDownloadUrl(item))
+    .filter(Boolean);
+
+  return [...new Set(normalized)];
+}
+
 function parseCsv(text) {
   const rows = [];
   let current = '';
@@ -145,10 +173,21 @@ function parseCsv(text) {
   if (!rows.length) return [];
 
   const headers = rows[0].map((h) => h.trim());
+  const materialIndex = headers.indexOf('material_downloads');
+  const embeddingIndex = headers.indexOf('embedding');
   return rows.slice(1).map((cells) => {
+    let normalizedCells = [...cells];
+    if (
+      materialIndex >= 0 &&
+      embeddingIndex === headers.length - 1 &&
+      cells.length === headers.length - 1
+    ) {
+      normalizedCells = [...cells.slice(0, materialIndex), '', cells[materialIndex]];
+    }
+
     const item = {};
     headers.forEach((key, index) => {
-      item[key] = (cells[index] || '').trim();
+      item[key] = (normalizedCells[index] || '').trim();
     });
     return item;
   });
@@ -162,7 +201,8 @@ function mapCsvRowsToRecords(rows) {
     sceneTags: parsePipeList(item.scene_tags),
     emotionTags: parsePipeList(item.emotion_tags),
     youtube: item.youtube || '',
-    videoDownload: normalizeDownloadUrl(item.video_download),
+    videoDownloads: parseDownloadUrls(item.video_download),
+    materialDownloads: parseDownloadUrls(item.material_downloads || item.material_download || item.asset_downloads),
     embedding: parseEmbedding(item.embedding),
   }));
 }
@@ -210,6 +250,22 @@ function formatScore(score, scoreType) {
   return `相关度 ${Math.round(score)} 分`;
 }
 
+function renderDownloadLinks(urls, label) {
+  if (!Array.isArray(urls) || !urls.length) return '';
+
+  return `
+    <div class="video-download-wrap">
+      ${urls
+        .map((url, index) => `
+          <a class="video-download-link" href="${url}" data-download-url="${url}">
+            ${urls.length > 1 ? `${label} ${index + 1}` : label}
+          </a>
+        `)
+        .join('')}
+    </div>
+  `;
+}
+
 function render(recordsToShow, options = {}) {
   const { showScore = false, scoreType = 'semantic' } = options;
   const rows = recordsToShow.map((item) => (item && item.record ? item : { record: item, score: null }));
@@ -250,7 +306,8 @@ function render(recordsToShow, options = {}) {
             <div class="video-wrap">
               <iframe src="${embed}" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
             </div>
-            ${r.videoDownload ? `<div class="video-download-wrap"><a class="video-download-link" href="${r.videoDownload}" data-download-url="${r.videoDownload}">下载视频</a></div>` : ''}
+            ${renderDownloadLinks(r.videoDownloads, '下载视频')}
+            ${renderDownloadLinks(r.materialDownloads, '下载素材')}
           </div>
         </article>
       `;
@@ -367,9 +424,24 @@ function renderExamples() {
 async function init() {
   try {
     statusEl.textContent = '正在加载 CSV 数据...';
-    const response = await fetch(DATA_CSV_PATH);
-    if (!response.ok) {
-      throw new Error(`读取 CSV 失败: HTTP ${response.status}`);
+    let response = null;
+    let resolvedCsvPath = '';
+
+    for (const path of DATA_CSV_CANDIDATES) {
+      try {
+        const res = await fetch(path, { cache: 'no-store' });
+        if (res.ok) {
+          response = res;
+          resolvedCsvPath = path;
+          break;
+        }
+      } catch {
+        // try next candidate
+      }
+    }
+
+    if (!response) {
+      throw new Error('读取 CSV 失败：所有候选路径都不可用');
     }
 
     const csvText = await response.text();
@@ -381,6 +453,7 @@ async function init() {
 
     const validEmbeddingCount = records.filter((r) => r.embedding.length > 0).length;
     statusEl.textContent = `已加载 ${records.length} 条语料（CSV + embedding ${validEmbeddingCount}/${records.length}）`;
+    console.info('[CSV] loaded from:', resolvedCsvPath);
     countEl.textContent = `当前结果 ${records.length} 条`;
   } catch (error) {
     console.error(error);

@@ -41,6 +41,24 @@
     </section>
   </main>
 
-  <script type="module" src="./assets/js/index.js"></script>
+  <script type="module">
+    async function loadMainScript() {
+      let version = '';
+      try {
+        const res = await fetch('./version.json', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          version = String(data.version || '').trim();
+        }
+      } catch {
+        // fallback below
+      }
+
+      if (!version) version = String(Date.now());
+      await import(`./assets/js/index.js?v=${encodeURIComponent(version)}`);
+    }
+
+    loadMainScript();
+  </script>
 </body>
 </html>

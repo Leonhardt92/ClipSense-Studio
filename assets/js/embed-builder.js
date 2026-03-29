@@ -13,6 +13,7 @@ const els = {
   emotionTags: document.getElementById('emotion_tags'),
   youtube: document.getElementById('youtube'),
   videoDownload: document.getElementById('video_download'),
+  materialDownloads: document.getElementById('material_downloads'),
   generateBtn: document.getElementById('generate-btn'),
   copyEmbeddingBtn: document.getElementById('copy-embedding-btn'),
   copyRowBtn: document.getElementById('copy-row-btn'),
@@ -135,6 +136,7 @@ function collectFields() {
     emotionTags: normalizeText(els.emotionTags.value),
     youtube: normalizeText(els.youtube.value),
     videoDownload: normalizeText(els.videoDownload.value),
+    materialDownloads: normalizeText(els.materialDownloads.value),
   };
 }
 
@@ -147,6 +149,7 @@ function buildCsvRow(fields, embedding) {
     fields.emotionTags,
     fields.youtube,
     fields.videoDownload,
+    fields.materialDownloads,
     JSON.stringify(embedding),
   ];
 
@@ -161,8 +164,11 @@ function fillFieldsFromCsvColumns(columns) {
   els.emotionTags.value = columns[4] || '';
   els.youtube.value = columns[5] || '';
   els.videoDownload.value = columns[6] || '';
+  const hasMaterialDownloads = columns.length >= 9;
+  els.materialDownloads.value = hasMaterialDownloads ? columns[7] || '' : '';
 
-  const embeddingRaw = String(columns[7] || '').trim();
+  const embeddingIndex = hasMaterialDownloads ? 8 : 7;
+  const embeddingRaw = String(columns[embeddingIndex] || '').trim();
   if (embeddingRaw) {
     try {
       const parsed = JSON.parse(embeddingRaw);
@@ -246,5 +252,5 @@ els.parseRowBtn.addEventListener('click', () => {
   }
 
   fillFieldsFromCsvColumns(columns);
-  setStatus(`解析完成：已填充 ${Math.min(columns.length, 8)} 列`);
+  setStatus(`解析完成：已填充 ${Math.min(columns.length, 9)} 列`);
 });
