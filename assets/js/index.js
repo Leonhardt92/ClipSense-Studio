@@ -70,6 +70,10 @@ function getYoutubeEmbed(url) {
   return `https://www.youtube.com/embed/${videoId}?rel=0`;
 }
 
+function isYoutubeUrl(url) {
+  return Boolean(getYoutubeEmbed(url));
+}
+
 function normalize(text) {
   return String(text || '').toLowerCase().replace(/\s+/g, '').trim();
 }
@@ -185,6 +189,26 @@ function parseCsv(text) {
       normalizedCells = [...cells.slice(0, materialIndex), '', cells[materialIndex]];
     }
 
+    // Backward compatibility for older exported rows:
+    // youtube is empty, the YouTube URL was written into video_download,
+    // the real video download URL was written into material_downloads,
+    // and an extra empty column was inserted before embedding.
+    if (
+      headers.length === 9 &&
+      cells.length === 10 &&
+      !String(cells[5] || '').trim() &&
+      isYoutubeUrl(cells[6]) &&
+      !String(cells[8] || '').trim()
+    ) {
+      normalizedCells = [
+        ...cells.slice(0, 5),
+        cells[6],
+        cells[7],
+        '',
+        cells[9],
+      ];
+    }
+
     const item = {};
     headers.forEach((key, index) => {
       item[key] = (normalizedCells[index] || '').trim();
@@ -194,17 +218,34 @@ function parseCsv(text) {
 }
 
 function mapCsvRowsToRecords(rows) {
-  return rows.map((item) => ({
-    original: item.original || '',
-    meaning: item.meaning || '',
-    synonyms: parsePipeList(item.synonyms),
-    sceneTags: parsePipeList(item.scene_tags),
-    emotionTags: parsePipeList(item.emotion_tags),
-    youtube: item.youtube || '',
-    videoDownloads: parseDownloadUrls(item.video_download),
-    materialDownloads: parseDownloadUrls(item.material_downloads || item.material_download || item.asset_downloads),
-    embedding: parseEmbedding(item.embedding),
-  }));
+  return rows.map((item) => {
+    let youtube = item.youtube || '';
+    let videoDownloadRaw = item.video_download || '';
+    let materialDownloadRaw = item.material_downloads || item.material_download || item.asset_downloads || '';
+
+    if (!youtube && isYoutubeUrl(videoDownloadRaw)) {
+      youtube = videoDownloadRaw;
+      videoDownloadRaw = materialDownloadRaw;
+      materialDownloadRaw = '';
+    }
+
+    if (!videoDownloadRaw && /youtube\.com\/download_my_video/i.test(materialDownloadRaw)) {
+      videoDownloadRaw = materialDownloadRaw;
+      materialDownloadRaw = '';
+    }
+
+    return {
+      original: item.original || '',
+      meaning: item.meaning || '',
+      synonyms: parsePipeList(item.synonyms),
+      sceneTags: parsePipeList(item.scene_tags),
+      emotionTags: parsePipeList(item.emotion_tags),
+      youtube,
+      videoDownloads: parseDownloadUrls(videoDownloadRaw),
+      materialDownloads: parseDownloadUrls(materialDownloadRaw),
+      embedding: parseEmbedding(item.embedding),
+    };
+  });
 }
 
 function dot(a, b) {
@@ -303,9 +344,11 @@ function render(recordsToShow, options = {}) {
           <div class="col"><div class="tag-list">${renderTags(r.sceneTags, 'scene')}</div></div>
           <div class="col"><div class="tag-list">${renderTags(r.emotionTags, 'mood')}</div></div>
           <div class="col">
-            <div class="video-wrap">
-              <iframe src="${embed}" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-            </div>
+            ${embed ? `
+              <div class="video-wrap">
+                <iframe src="${embed}" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+              </div>
+            ` : '<div class="empty">暂无可播放视频</div>'}
             ${renderDownloadLinks(r.videoDownloads, '下载视频')}
             ${renderDownloadLinks(r.materialDownloads, '下载素材')}
           </div>
