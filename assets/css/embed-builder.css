@@ -89,6 +89,17 @@ label span {
   font-size: 13px;
 }
 
+.input-with-link {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.input-with-link input {
+  flex: 1 1 320px;
+}
+
 input,
 textarea {
   width: 100%;
@@ -170,6 +181,21 @@ button.ghost {
   font-weight: 700;
   color: #fff;
   background: linear-gradient(120deg, #1d4ed8, #2563eb);
+}
+
+.field-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  color: #0f4e9b;
+  background: #eaf3ff;
+  border: 1px solid #cfe4ff;
+  white-space: nowrap;
 }
 
 .jump-hint {

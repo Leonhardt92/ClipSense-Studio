@@ -23,7 +23,7 @@
 CSV 表头顺序：
 
 ```csv
-original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,material_downloads,embedding
+original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,material_downloads,relation,location,people_count,embedding
 ```
 
 字段说明：
@@ -36,6 +36,9 @@ original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,materia
 - `youtube`：YouTube 链接（支持 watch / shorts / youtu.be）
 - `video_download`：视频下载链接，支持多个链接，页面显示为“下载视频”
 - `material_downloads`：素材下载链接，适合放纯 BGM、人声、贴图等可复用素材，支持多个链接，页面显示为“下载素材”
+- `relation`：人物关系标签，使用 `|` 分隔
+- `location`：地点标签，使用 `|` 分隔
+- `people_count`：人数
 - `embedding`：向量 JSON 数组
 
 ## 本地运行

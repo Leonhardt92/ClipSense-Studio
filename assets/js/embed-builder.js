@@ -14,6 +14,9 @@ const els = {
   youtube: document.getElementById('youtube'),
   videoDownload: document.getElementById('video_download'),
   materialDownloads: document.getElementById('material_downloads'),
+  relation: document.getElementById('relation'),
+  location: document.getElementById('location'),
+  peopleCount: document.getElementById('people_count'),
   generateBtn: document.getElementById('generate-btn'),
   copyEmbeddingBtn: document.getElementById('copy-embedding-btn'),
   copyRowBtn: document.getElementById('copy-row-btn'),
@@ -89,6 +92,8 @@ function buildSearchText(fields) {
   const synonyms = parsePipeList(fields.synonyms).join('，');
   const sceneTags = parsePipeList(fields.sceneTags).join('，');
   const emotionTags = parsePipeList(fields.emotionTags).join('，');
+  const relations = parsePipeList(fields.relation).join('，');
+  const locations = parsePipeList(fields.location).join('，');
 
   return [
     `原句：${fields.original}`,
@@ -96,6 +101,9 @@ function buildSearchText(fields) {
     `近义：${synonyms}`,
     `场景：${sceneTags}`,
     `情绪：${emotionTags}`,
+    `关系：${relations}`,
+    `地点：${locations}`,
+    `人数：${fields.peopleCount}`,
   ].join('\n');
 }
 
@@ -137,6 +145,9 @@ function collectFields() {
     youtube: normalizeText(els.youtube.value),
     videoDownload: normalizeText(els.videoDownload.value),
     materialDownloads: normalizeText(els.materialDownloads.value),
+    relation: normalizeText(els.relation.value),
+    location: normalizeText(els.location.value),
+    peopleCount: normalizeText(els.peopleCount.value),
   };
 }
 
@@ -150,6 +161,9 @@ function buildCsvRow(fields, embedding) {
     fields.youtube,
     fields.videoDownload,
     fields.materialDownloads,
+    fields.relation,
+    fields.location,
+    fields.peopleCount,
     JSON.stringify(embedding),
   ];
 
@@ -164,10 +178,14 @@ function fillFieldsFromCsvColumns(columns) {
   els.emotionTags.value = columns[4] || '';
   els.youtube.value = columns[5] || '';
   els.videoDownload.value = columns[6] || '';
+  const hasExtendedColumns = columns.length >= 12;
   const hasMaterialDownloads = columns.length >= 9;
   els.materialDownloads.value = hasMaterialDownloads ? columns[7] || '' : '';
+  els.relation.value = hasExtendedColumns ? columns[8] || '' : '';
+  els.location.value = hasExtendedColumns ? columns[9] || '' : '';
+  els.peopleCount.value = hasExtendedColumns ? columns[10] || '' : '';
 
-  const embeddingIndex = hasMaterialDownloads ? 8 : 7;
+  const embeddingIndex = hasExtendedColumns ? 11 : (hasMaterialDownloads ? 8 : 7);
   const embeddingRaw = String(columns[embeddingIndex] || '').trim();
   if (embeddingRaw) {
     try {
@@ -252,5 +270,5 @@ els.parseRowBtn.addEventListener('click', () => {
   }
 
   fillFieldsFromCsvColumns(columns);
-  setStatus(`解析完成：已填充 ${Math.min(columns.length, 9)} 列`);
+  setStatus(`解析完成：已填充 ${Math.min(columns.length, 12)} 列`);
 });

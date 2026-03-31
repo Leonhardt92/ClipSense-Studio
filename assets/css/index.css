@@ -159,6 +159,37 @@ button {
   max-width: none;
 }
 
+.column-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow);
+}
+
+.column-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: #38506f;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.column-toggle input {
+  margin: 0;
+}
+
 .chip {
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -180,14 +211,14 @@ button {
 }
 
 .results {
-  min-width: 1220px;
+  min-width: var(--results-min-width, 1220px);
   display: grid;
   gap: 0;
 }
 
 .row {
   display: grid;
-  grid-template-columns: 1.2fr 1.5fr 1.4fr 0.9fr 0.9fr 280px;
+  grid-template-columns: var(--grid-columns, 1.2fr 1.5fr 1.4fr 0.9fr 0.9fr 280px);
   gap: 10px;
   align-items: center;
   padding: 10px 12px;
@@ -260,6 +291,11 @@ button {
 .tag.mood {
   background: var(--tag-mood-bg);
   color: var(--tag-mood-text);
+}
+
+.tag.meta {
+  background: #f0f4f8;
+  color: #41556f;
 }
 
 .video-wrap {

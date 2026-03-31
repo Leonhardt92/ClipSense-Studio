@@ -19,7 +19,7 @@
 
     <section class="parse-block">
       <h2>从现有 CSV 单行解析并回填</h2>
-      <textarea id="parse-row-input" rows="4" placeholder="粘贴 1 行 CSV：original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,material_downloads,embedding"></textarea>
+      <textarea id="parse-row-input" rows="4" placeholder="粘贴 1 行 CSV：original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,material_downloads,relation,location,people_count,embedding"></textarea>
       <div class="actions parse-actions">
         <button id="parse-row-btn" type="button" class="ghost">解析并填充表单</button>
       </div>
@@ -53,7 +53,17 @@
 
       <label>
         <span>youtube（视频链接）</span>
-        <input id="youtube" type="text" placeholder="https://www.youtube.com/watch?v=jNQXAC9IVRw" />
+        <div class="input-with-link">
+          <input id="youtube" type="text" placeholder="https://www.youtube.com/watch?v=jNQXAC9IVRw" />
+          <a
+            class="field-link"
+            href="https://studio.youtube.com/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            打开 YouTube Studio
+          </a>
+        </div>
       </label>
 
       <label>
@@ -64,6 +74,21 @@
       <label>
         <span>material_downloads（素材下载链接，可填多个）</span>
         <input id="material_downloads" type="text" placeholder="https://example.com/bgm.mp3 | https://example.com/bgm-clean.wav" />
+      </label>
+
+      <label>
+        <span>relation（关系，可填多个）</span>
+        <input id="relation" type="text" placeholder="夫妻|师徒|朋友" />
+      </label>
+
+      <label>
+        <span>location（地点，可填多个）</span>
+        <input id="location" type="text" placeholder="家里|马路|室内" />
+      </label>
+
+      <label>
+        <span>people_count（人数）</span>
+        <input id="people_count" type="text" placeholder="1" />
       </label>
     </section>
 

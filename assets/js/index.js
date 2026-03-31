@@ -26,6 +26,7 @@ const resultsEl = document.getElementById('results');
 const statusEl = document.getElementById('status');
 const countEl = document.getElementById('count');
 const examplesEl = document.getElementById('examples');
+const columnPickerEl = document.getElementById('column-picker');
 const modeKeywordBtn = document.getElementById('mode-keyword');
 const modeSemanticBtn = document.getElementById('mode-semantic');
 
@@ -35,12 +36,65 @@ let extractor = null;
 let extractorLoadingPromise = null;
 let searchSeq = 0;
 
+const COLUMN_STORAGE_KEY = 'clipsense-visible-columns';
+const COLUMN_DEFS = [
+  { key: 'original', label: '原句', width: '1.2fr', render: (r, scoreText) => `
+      <div class="col text">
+        ${scoreText ? `<div class="score-pill">${scoreText}</div>` : ''}
+        <div>${r.original}</div>
+      </div>
+    ` },
+  { key: 'meaning', label: '这句话表达的意思', width: '1.5fr', render: (r) => `<div class="col text">${r.meaning}</div>` },
+  { key: 'synonyms', label: '适合搜索的近义说法', width: '1.4fr', render: (r) => `<div class="col"><div class="tag-list">${renderTags(r.synonyms, 'synonym')}</div></div>` },
+  { key: 'sceneTags', label: '场景标签', width: '0.9fr', render: (r) => `<div class="col"><div class="tag-list">${renderTags(r.sceneTags, 'scene')}</div></div>` },
+  { key: 'emotionTags', label: '情绪标签', width: '0.9fr', render: (r) => `<div class="col"><div class="tag-list">${renderTags(r.emotionTags, 'mood')}</div></div>` },
+  { key: 'locations', label: '地点', width: '0.8fr', render: (r) => `<div class="col"><div class="tag-list">${renderTags(r.locations, 'meta')}</div></div>` },
+  { key: 'relations', label: '关系', width: '0.8fr', render: (r) => `<div class="col"><div class="tag-list">${renderTags(r.relations, 'meta')}</div></div>` },
+  { key: 'peopleCounts', label: '人数', width: '0.7fr', render: (r) => `<div class="col"><div class="tag-list">${renderTags(r.peopleCounts, 'meta')}</div></div>` },
+  { key: 'video', label: '视频片段（YouTube）', width: '280px', render: (r) => {
+      const embed = getYoutubeEmbed(r.youtube);
+      return `
+        <div class="col">
+          ${embed ? `
+            <div class="video-wrap">
+              <iframe src="${embed}" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+          ` : '<div class="empty">暂无可播放视频</div>'}
+          ${renderDownloadLinks(r.videoDownloads, '下载视频')}
+          ${renderDownloadLinks(r.materialDownloads, '下载素材')}
+        </div>
+      `;
+    } },
+];
+let visibleColumnKeys = loadVisibleColumns();
+
 const exampleQueries = [
   '压力大但是还想坚持',
   '先做完再优化',
   '我有点害怕，不敢开始',
   '被误解很委屈',
 ];
+
+function loadVisibleColumns() {
+  try {
+    const raw = localStorage.getItem(COLUMN_STORAGE_KEY);
+    if (!raw) return COLUMN_DEFS.map((item) => item.key);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) return COLUMN_DEFS.map((item) => item.key);
+    const valid = parsed.filter((key) => COLUMN_DEFS.some((item) => item.key === key));
+    return valid.length ? valid : COLUMN_DEFS.map((item) => item.key);
+  } catch {
+    return COLUMN_DEFS.map((item) => item.key);
+  }
+}
+
+function saveVisibleColumns() {
+  try {
+    localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(visibleColumnKeys));
+  } catch {
+    // ignore storage failure
+  }
+}
 
 function getYoutubeEmbed(url) {
   const raw = String(url || '').trim();
@@ -177,6 +231,8 @@ function parseCsv(text) {
   if (!rows.length) return [];
 
   const headers = rows[0].map((h) => h.trim());
+  const youtubeIndex = headers.indexOf('youtube');
+  const videoDownloadIndex = headers.indexOf('video_download');
   const materialIndex = headers.indexOf('material_downloads');
   const embeddingIndex = headers.indexOf('embedding');
   return rows.slice(1).map((cells) => {
@@ -194,19 +250,23 @@ function parseCsv(text) {
     // the real video download URL was written into material_downloads,
     // and an extra empty column was inserted before embedding.
     if (
-      headers.length === 9 &&
-      cells.length === 10 &&
-      !String(cells[5] || '').trim() &&
-      isYoutubeUrl(cells[6]) &&
-      !String(cells[8] || '').trim()
+      youtubeIndex >= 0 &&
+      videoDownloadIndex >= 0 &&
+      materialIndex >= 0 &&
+      embeddingIndex >= 0 &&
+      cells.length === headers.length + 1 &&
+      !String(cells[youtubeIndex] || '').trim() &&
+      isYoutubeUrl(cells[videoDownloadIndex]) &&
+      !String(cells[embeddingIndex] || '').trim()
     ) {
-      normalizedCells = [
-        ...cells.slice(0, 5),
-        cells[6],
-        cells[7],
-        '',
-        cells[9],
-      ];
+      normalizedCells = headers.map((_, index) => {
+        if (index < youtubeIndex) return cells[index] || '';
+        if (index === youtubeIndex) return cells[videoDownloadIndex] || '';
+        if (index === videoDownloadIndex) return cells[materialIndex] || '';
+        if (index === materialIndex) return '';
+        if (index >= embeddingIndex) return cells[index + 1] || '';
+        return cells[index] || '';
+      });
     }
 
     const item = {};
@@ -240,6 +300,9 @@ function mapCsvRowsToRecords(rows) {
       synonyms: parsePipeList(item.synonyms),
       sceneTags: parsePipeList(item.scene_tags),
       emotionTags: parsePipeList(item.emotion_tags),
+      locations: parsePipeList(item.location || item.locations || item.place || item.地点),
+      relations: parsePipeList(item.relation || item.relationship || item.关系),
+      peopleCounts: parsePipeList(item.people_count || item.people_counts || item.count || item.人数),
       youtube,
       videoDownloads: parseDownloadUrls(videoDownloadRaw),
       materialDownloads: parseDownloadUrls(materialDownloadRaw),
@@ -264,6 +327,9 @@ function scoreRecordKeyword(record, keywords) {
   const synonymText = normalize(record.synonyms.join(' '));
   const sceneText = normalize(record.sceneTags.join(' '));
   const moodText = normalize(record.emotionTags.join(' '));
+  const locationText = normalize(record.locations.join(' '));
+  const relationText = normalize(record.relations.join(' '));
+  const peopleCountText = normalize(record.peopleCounts.join(' '));
 
   let score = 0;
   keywords.forEach((keywordRaw) => {
@@ -274,6 +340,9 @@ function scoreRecordKeyword(record, keywords) {
     if (synonymText.includes(keyword)) score += 5;
     if (sceneText.includes(keyword)) score += 3;
     if (moodText.includes(keyword)) score += 3;
+    if (locationText.includes(keyword)) score += 3;
+    if (relationText.includes(keyword)) score += 3;
+    if (peopleCountText.includes(keyword)) score += 2;
   });
   return score;
 }
@@ -307,51 +376,64 @@ function renderDownloadLinks(urls, label) {
   `;
 }
 
+function getVisibleColumns() {
+  return COLUMN_DEFS.filter((item) => visibleColumnKeys.includes(item.key));
+}
+
+function escapeAttr(value) {
+  return String(value || '').replace(/"/g, '&quot;');
+}
+
+function renderColumnPicker() {
+  if (!columnPickerEl) return;
+  columnPickerEl.innerHTML = COLUMN_DEFS
+    .map((item) => `
+      <label class="column-toggle">
+        <input
+          type="checkbox"
+          data-column-key="${escapeAttr(item.key)}"
+          ${visibleColumnKeys.includes(item.key) ? 'checked' : ''}
+        />
+        <span>${item.label}</span>
+      </label>
+    `)
+    .join('');
+}
+
 function render(recordsToShow, options = {}) {
   const { showScore = false, scoreType = 'semantic' } = options;
   const rows = recordsToShow.map((item) => (item && item.record ? item : { record: item, score: null }));
+  const visibleColumns = getVisibleColumns();
+  const gridColumns = visibleColumns.map((item) => item.width).join(' ');
+  const minWidth = visibleColumns.reduce((sum, item) => {
+    if (item.width.endsWith('px')) return sum + Number.parseInt(item.width, 10);
+    return sum + 180;
+  }, 0);
 
   countEl.textContent = `当前结果 ${rows.length} 条`;
 
   if (!rows.length) {
     resultsEl.innerHTML = '<div class="empty">没有匹配结果，换个说法试试。</div>';
+    resultsEl.style.setProperty('--grid-columns', gridColumns);
+    resultsEl.style.setProperty('--results-min-width', `${Math.max(minWidth, 720)}px`);
     return;
   }
+
+  resultsEl.style.setProperty('--grid-columns', gridColumns);
+  resultsEl.style.setProperty('--results-min-width', `${Math.max(minWidth, 720)}px`);
 
   resultsEl.innerHTML = rows
     .map((item, index) => {
       const r = item.record;
-      const embed = getYoutubeEmbed(r.youtube);
       const scoreText = showScore ? formatScore(item.score, scoreType) : '';
       return `
         ${index === 0 ? `
           <div class="row head">
-            <div class="col">原句</div>
-            <div class="col">这句话表达的意思</div>
-            <div class="col">适合搜索的近义说法</div>
-            <div class="col">场景标签</div>
-            <div class="col">情绪标签</div>
-            <div class="col">视频片段（YouTube）</div>
+            ${visibleColumns.map((column) => `<div class="col">${column.label}</div>`).join('')}
           </div>
         ` : ''}
         <article class="row">
-          <div class="col text">
-            ${scoreText ? `<div class="score-pill">${scoreText}</div>` : ''}
-            <div>${r.original}</div>
-          </div>
-          <div class="col text">${r.meaning}</div>
-          <div class="col"><div class="tag-list">${renderTags(r.synonyms, 'synonym')}</div></div>
-          <div class="col"><div class="tag-list">${renderTags(r.sceneTags, 'scene')}</div></div>
-          <div class="col"><div class="tag-list">${renderTags(r.emotionTags, 'mood')}</div></div>
-          <div class="col">
-            ${embed ? `
-              <div class="video-wrap">
-                <iframe src="${embed}" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-              </div>
-            ` : '<div class="empty">暂无可播放视频</div>'}
-            ${renderDownloadLinks(r.videoDownloads, '下载视频')}
-            ${renderDownloadLinks(r.materialDownloads, '下载素材')}
-          </div>
+          ${visibleColumns.map((column) => column.render(r, scoreText)).join('')}
         </article>
       `;
     })
@@ -464,6 +546,31 @@ function renderExamples() {
   });
 }
 
+function handleColumnPickerChange(event) {
+  const target = event.target.closest('input[data-column-key]');
+  if (!target) return;
+
+  const key = target.dataset.columnKey || '';
+  if (!key) return;
+
+  if (target.checked) {
+    if (!visibleColumnKeys.includes(key)) {
+      visibleColumnKeys = [...visibleColumnKeys, key];
+    }
+  } else {
+    const next = visibleColumnKeys.filter((item) => item !== key);
+    if (!next.length) {
+      target.checked = true;
+      statusEl.textContent = '至少保留一列显示';
+      return;
+    }
+    visibleColumnKeys = next;
+  }
+
+  saveVisibleColumns();
+  search();
+}
+
 async function init() {
   try {
     statusEl.textContent = '正在加载 CSV 数据...';
@@ -492,6 +599,7 @@ async function init() {
     records = mapCsvRowsToRecords(rows).filter((r) => r.original || r.meaning);
 
     renderExamples();
+    renderColumnPicker();
     render(records);
 
     const validEmbeddingCount = records.filter((r) => r.embedding.length > 0).length;
@@ -512,6 +620,7 @@ queryInput.addEventListener('keydown', (event) => {
 });
 modeKeywordBtn.addEventListener('click', () => setMode('keyword'));
 modeSemanticBtn.addEventListener('click', () => setMode('semantic'));
+columnPickerEl.addEventListener('change', handleColumnPickerChange);
 resultsEl.addEventListener('click', (event) => {
   const link = event.target.closest('.video-download-link');
   if (!link) return;
