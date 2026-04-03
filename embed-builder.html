@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CSV Embedding 生成器</title>
+  <link
+    rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111727'/%3E%3Ctext x='50%25' y='52%25' dominant-baseline='middle' text-anchor='middle' font-size='28' font-family='Arial,%20PingFang%20SC,%20Microsoft%20YaHei,%20sans-serif' fill='%23ffffff'%3E短%3C/text%3E%3C/svg%3E"
+  />
   <link rel="stylesheet" href="./assets/css/embed-builder.css" />
 </head>
 <body>
@@ -15,17 +19,22 @@
     </nav>
 
     <h1>CSV Embedding 生成器</h1>
-    <p class="desc">填入 CSV 的前几列，点击生成 embedding。你可以直接复制“完整 CSV 行”手动贴入 <code>data/search_records.csv</code>。</p>
+    <p class="desc">填写记录字段后生成 embedding。现在会分别产出主记录行和 embedding 行，分别粘贴到 <code>data/search_records.csv</code> 与 <code>data/search_record_embeddings.csv</code>。</p>
 
     <section class="parse-block">
-      <h2>从现有 CSV 单行解析并回填</h2>
-      <textarea id="parse-row-input" rows="4" placeholder="粘贴 1 行 CSV：original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,material_downloads,relation,location,people_count,embedding"></textarea>
+      <h2>从现有 CSV 行解析并回填</h2>
+      <textarea id="parse-row-input" rows="4" placeholder="支持两种格式：1）旧单行 CSV（含 embedding）；2）新结构的两行 CSV（记录行 + embedding 行）"></textarea>
       <div class="actions parse-actions">
         <button id="parse-row-btn" type="button" class="ghost">解析并填充表单</button>
       </div>
     </section>
 
     <section class="form-grid">
+      <label>
+        <span>id（主键，用于关联 embedding）</span>
+        <input id="record_id" type="text" placeholder="留空可在生成时自动创建，例如：record-20260403121530" />
+      </label>
+
       <label>
         <span>original（原句）</span>
         <textarea id="original" rows="2" placeholder="例如：今天先完成60分，也比0分强。"></textarea>
@@ -95,7 +104,8 @@
     <section class="actions">
       <button id="generate-btn">生成 embedding</button>
       <button id="copy-embedding-btn" class="ghost">复制 embedding</button>
-      <button id="copy-row-btn" class="ghost">复制完整 CSV 行</button>
+      <button id="copy-record-row-btn" class="ghost">复制主记录行</button>
+      <button id="copy-embedding-row-btn" class="ghost">复制 embedding 行</button>
     </section>
 
     <div class="meta">
@@ -104,8 +114,16 @@
     </div>
 
     <section class="output-block">
-      <h2>完整 CSV 行（可直接粘贴）</h2>
-      <textarea id="csv-row-output" rows="5" readonly></textarea>
+      <h2>主记录 CSV 行（粘贴到 search_records.csv）</h2>
+      <textarea id="record-row-output" rows="4" readonly></textarea>
+      <div class="output-actions">
+        <span class="jump-hint">表头：id,original,meaning,synonyms,scene_tags,emotion_tags,relation,location,people_count,youtube,video_download,material_downloads</span>
+      </div>
+    </section>
+
+    <section class="output-block">
+      <h2>embedding CSV 行（粘贴到 search_record_embeddings.csv）</h2>
+      <textarea id="embedding-row-output" rows="4" readonly></textarea>
       <div class="output-actions">
         <a
           class="jump-link"
@@ -115,19 +133,10 @@
         >
           打开 ClipSense Studio 仓库
         </a>
-        <span class="jump-hint">生成后可直接跳转，把 CSV 粘进去。</span>
+        <span class="jump-hint">表头：id,embedding</span>
       </div>
     </section>
 
-    <section class="output-block">
-      <h2>embedding（JSON 数组）</h2>
-      <textarea id="embedding-output" rows="10" readonly></textarea>
-    </section>
-
-    <section class="output-block">
-      <h2>用于向量化的拼接文本（调试）</h2>
-      <textarea id="search-text-output" rows="8" readonly></textarea>
-    </section>
   </main>
 
   <script type="module" src="./assets/js/embed-builder.js"></script>

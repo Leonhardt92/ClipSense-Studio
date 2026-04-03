@@ -19,15 +19,23 @@
 主数据文件：
 
 - `data/search_records.csv`
+- `data/search_record_embeddings.csv`
 
-CSV 表头顺序：
+`data/search_records.csv` 表头顺序：
 
 ```csv
-original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,material_downloads,relation,location,people_count,embedding
+id,original,meaning,synonyms,scene_tags,emotion_tags,relation,location,people_count,youtube,video_download,material_downloads
+```
+
+`data/search_record_embeddings.csv` 表头顺序：
+
+```csv
+id,embedding
 ```
 
 字段说明：
 
+- `id`：记录主键，用于和 embedding 文件关联
 - `original`：原句
 - `meaning`：这句话表达的意思
 - `synonyms`：近义搜索词，使用 `|` 分隔
@@ -39,7 +47,7 @@ original,meaning,synonyms,scene_tags,emotion_tags,youtube,video_download,materia
 - `relation`：人物关系标签，使用 `|` 分隔
 - `location`：地点标签，使用 `|` 分隔
 - `people_count`：人数
-- `embedding`：向量 JSON 数组
+- `embedding`：向量 JSON 数组，单独放在 `data/search_record_embeddings.csv`
 
 ## 本地运行
 
@@ -55,14 +63,15 @@ python3 -m http.server 8080
 http://localhost:8080/
 ```
 
-## 典型工作流（更新某条记录 embedding）
+## 典型工作流（新增或更新某条记录）
 
 1. 打开 `embed-builder.html`
-2. 把现有 CSV 单行粘贴到“从现有 CSV 单行解析并回填”
+2. 把现有 CSV 粘贴到“从现有 CSV 行解析并回填”
 3. 点击“解析并填充表单”
 4. 修改你要改的字段
 5. 点击“生成 embedding”
-6. 复制“完整 CSV 行”覆盖回 `data/search_records.csv`
+6. 复制“主记录 CSV 行”到 `data/search_records.csv`
+7. 复制“embedding CSV 行”到 `data/search_record_embeddings.csv`
 
 ## AI 归类模板
 

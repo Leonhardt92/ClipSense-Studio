@@ -11,12 +11,17 @@ function getBasePath() {
   return `${path}/`;
 }
 
-const DATA_CSV_CANDIDATES = [
-  `${window.location.origin}${getBasePath()}data/search_records.csv`,
-  `${window.location.origin}/data/search_records.csv`,
-  './data/search_records.csv',
-  'data/search_records.csv',
-];
+function buildCsvCandidates(fileName) {
+  return [
+    `${window.location.origin}${getBasePath()}data/${fileName}`,
+    `${window.location.origin}/data/${fileName}`,
+    `./data/${fileName}`,
+    `data/${fileName}`,
+  ];
+}
+
+const RECORD_CSV_CANDIDATES = buildCsvCandidates('search_records.csv');
+const EMBEDDING_CSV_CANDIDATES = buildCsvCandidates('search_record_embeddings.csv');
 const MODEL_ID = 'Xenova/bge-small-zh-v1.5';
 const QUERY_INSTRUCTION = '为这个句子生成表示以用于检索相关片段：';
 
@@ -67,13 +72,6 @@ const COLUMN_DEFS = [
     } },
 ];
 let visibleColumnKeys = loadVisibleColumns();
-
-const exampleQueries = [
-  '压力大但是还想坚持',
-  '先做完再优化',
-  '我有点害怕，不敢开始',
-  '被误解很委屈',
-];
 
 function loadVisibleColumns() {
   try {
@@ -231,54 +229,30 @@ function parseCsv(text) {
   if (!rows.length) return [];
 
   const headers = rows[0].map((h) => h.trim());
-  const youtubeIndex = headers.indexOf('youtube');
-  const videoDownloadIndex = headers.indexOf('video_download');
-  const materialIndex = headers.indexOf('material_downloads');
-  const embeddingIndex = headers.indexOf('embedding');
   return rows.slice(1).map((cells) => {
-    let normalizedCells = [...cells];
-    if (
-      materialIndex >= 0 &&
-      embeddingIndex === headers.length - 1 &&
-      cells.length === headers.length - 1
-    ) {
-      normalizedCells = [...cells.slice(0, materialIndex), '', cells[materialIndex]];
-    }
-
-    // Backward compatibility for older exported rows:
-    // youtube is empty, the YouTube URL was written into video_download,
-    // the real video download URL was written into material_downloads,
-    // and an extra empty column was inserted before embedding.
-    if (
-      youtubeIndex >= 0 &&
-      videoDownloadIndex >= 0 &&
-      materialIndex >= 0 &&
-      embeddingIndex >= 0 &&
-      cells.length === headers.length + 1 &&
-      !String(cells[youtubeIndex] || '').trim() &&
-      isYoutubeUrl(cells[videoDownloadIndex]) &&
-      !String(cells[embeddingIndex] || '').trim()
-    ) {
-      normalizedCells = headers.map((_, index) => {
-        if (index < youtubeIndex) return cells[index] || '';
-        if (index === youtubeIndex) return cells[videoDownloadIndex] || '';
-        if (index === videoDownloadIndex) return cells[materialIndex] || '';
-        if (index === materialIndex) return '';
-        if (index >= embeddingIndex) return cells[index + 1] || '';
-        return cells[index] || '';
-      });
-    }
-
     const item = {};
     headers.forEach((key, index) => {
-      item[key] = (normalizedCells[index] || '').trim();
+      item[key] = (cells[index] || '').trim();
     });
     return item;
   });
 }
 
-function mapCsvRowsToRecords(rows) {
-  return rows.map((item) => {
+function mapEmbeddingRows(rows) {
+  const embeddingsById = new Map();
+
+  rows.forEach((item) => {
+    const id = String(item.id || '').trim();
+    if (!id) return;
+    const embedding = parseEmbedding(item.embedding);
+    embeddingsById.set(id, embedding);
+  });
+
+  return embeddingsById;
+}
+
+function mapCsvRowsToRecords(rows, embeddingsById = new Map()) {
+  return rows.map((item, index) => {
     let youtube = item.youtube || '';
     let videoDownloadRaw = item.video_download || '';
     let materialDownloadRaw = item.material_downloads || item.material_download || item.asset_downloads || '';
@@ -294,7 +268,10 @@ function mapCsvRowsToRecords(rows) {
       materialDownloadRaw = '';
     }
 
+    const id = item.id || `row-${index + 1}`;
+
     return {
+      id,
       original: item.original || '',
       meaning: item.meaning || '',
       synonyms: parsePipeList(item.synonyms),
@@ -306,7 +283,7 @@ function mapCsvRowsToRecords(rows) {
       youtube,
       videoDownloads: parseDownloadUrls(videoDownloadRaw),
       materialDownloads: parseDownloadUrls(materialDownloadRaw),
-      embedding: parseEmbedding(item.embedding),
+      embedding: embeddingsById.get(id) || parseEmbedding(item.embedding),
     };
   });
 }
@@ -487,7 +464,8 @@ async function search() {
 
   if (!qText) {
     render(records);
-    statusEl.textContent = `已加载 ${records.length} 条语料（CSV + embedding）`;
+    const validEmbeddingCount = records.filter((record) => record.embedding.length > 0).length;
+    statusEl.textContent = `已加载 ${records.length} 条语料（embedding ${validEmbeddingCount}/${records.length}）`;
     return;
   }
 
@@ -534,9 +512,9 @@ function setMode(mode) {
 }
 
 function renderExamples() {
-  examplesEl.innerHTML = exampleQueries
-    .map((q) => `<button class="chip" type="button" data-q="${q}">${q}</button>`)
-    .join('');
+  if (!examplesEl) return;
+  examplesEl.innerHTML = '';
+  examplesEl.style.display = 'none';
 
   examplesEl.addEventListener('click', (event) => {
     const target = event.target.closest('button[data-q]');
@@ -571,44 +549,58 @@ function handleColumnPickerChange(event) {
   search();
 }
 
+async function fetchFirstAvailableCsv(candidates, label) {
+  for (const path of candidates) {
+    try {
+      const response = await fetch(path, { cache: 'no-store' });
+      if (response.ok) {
+        return {
+          path,
+          text: await response.text(),
+        };
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  throw new Error(`读取 ${label} 失败：所有候选路径都不可用`);
+}
+
 async function init() {
   try {
     statusEl.textContent = '正在加载 CSV 数据...';
-    let response = null;
-    let resolvedCsvPath = '';
 
-    for (const path of DATA_CSV_CANDIDATES) {
-      try {
-        const res = await fetch(path, { cache: 'no-store' });
-        if (res.ok) {
-          response = res;
-          resolvedCsvPath = path;
-          break;
-        }
-      } catch {
-        // try next candidate
-      }
+    const recordCsv = await fetchFirstAvailableCsv(RECORD_CSV_CANDIDATES, '主记录 CSV');
+    let embeddingRows = [];
+    let resolvedEmbeddingPath = '';
+
+    try {
+      const embeddingCsv = await fetchFirstAvailableCsv(EMBEDDING_CSV_CANDIDATES, 'embedding CSV');
+      embeddingRows = parseCsv(embeddingCsv.text);
+      resolvedEmbeddingPath = embeddingCsv.path;
+    } catch {
+      embeddingRows = [];
     }
 
-    if (!response) {
-      throw new Error('读取 CSV 失败：所有候选路径都不可用');
-    }
-
-    const csvText = await response.text();
-    const rows = parseCsv(csvText);
-    records = mapCsvRowsToRecords(rows).filter((r) => r.original || r.meaning);
+    const recordRows = parseCsv(recordCsv.text);
+    const embeddingsById = mapEmbeddingRows(embeddingRows);
+    records = mapCsvRowsToRecords(recordRows, embeddingsById).filter((r) => r.original || r.meaning);
 
     renderExamples();
     renderColumnPicker();
     render(records);
 
     const validEmbeddingCount = records.filter((r) => r.embedding.length > 0).length;
-    statusEl.textContent = `已加载 ${records.length} 条语料（CSV + embedding ${validEmbeddingCount}/${records.length}）`;
-    console.info('[CSV] loaded from:', resolvedCsvPath);
+    statusEl.textContent = `已加载 ${records.length} 条语料（embedding ${validEmbeddingCount}/${records.length}）`;
+    console.info('[CSV] records loaded from:', recordCsv.path);
+    if (resolvedEmbeddingPath) {
+      console.info('[CSV] embeddings loaded from:', resolvedEmbeddingPath);
+    }
     countEl.textContent = `当前结果 ${records.length} 条`;
   } catch (error) {
     console.error(error);
-    statusEl.textContent = 'CSV 加载失败，请检查 data/search_records.csv';
+    statusEl.textContent = 'CSV 加载失败，请检查 data/search_records.csv 和 data/search_record_embeddings.csv';
     resultsEl.innerHTML = `<div class="empty">CSV 加载失败：${error.message}</div>`;
     countEl.textContent = '当前结果 0 条';
   }
